@@ -52,6 +52,8 @@
         <file path="${CC3200_SRC_ROOT}/bma222drv.h" openOnCreation="false" excludeFromBuild="false" action="link"/>
         <file path="${CC3200_SRC_ROOT}/encoder.c"   openOnCreation="false" excludeFromBuild="false" action="link"/>
         <file path="${CC3200_SRC_ROOT}/encoder.h"   openOnCreation="false" excludeFromBuild="false" action="link"/>
+        <file path="${CC3200_SRC_ROOT}/safety.c"    openOnCreation="false" excludeFromBuild="false" action="link"/>
+        <file path="${CC3200_SRC_ROOT}/safety.h"    openOnCreation="false" excludeFromBuild="false" action="link"/>
 
         <!-- ===== SSD1351 colour OLED (SPI) driver, ported from the EEC172 i2c_demo ===== -->
         <file path="${CC3200_SRC_ROOT}/Adafruit_GFX.c"     openOnCreation="false" excludeFromBuild="false" action="link"/>

@@ -16,6 +16,7 @@
 #include "mpu6050.h"
 #include "kalman.h"
 #include "encoder.h"
+#include "safety.h"         // Safety_TiltPastLimit()
 #include "rom.h"
 #include "rom_map.h"
 #include "utils.h"
@@ -168,8 +169,7 @@ float Balance_GetWheelVel(void) { return g_fWheelVel; }
 
 int Balance_IsFallen(void)
 {
-    float a = g_fTilt < 0 ? -g_fTilt : g_fTilt;
-    return (a > BALANCE_SAFE_TILT_DEG);
+    return Safety_TiltPastLimit(g_fTilt);   // |tilt| > BALANCE_SAFE_TILT_DEG
 }
 
 //*****************************************************************************

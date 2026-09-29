@@ -1,10 +1,11 @@
 //*****************************************************************************
 // main.c - EEC 172 self-balancing two-wheel cart (CC3200 vehicle side)
 //
-// IMU (BMA222 accel + MPU-6050 gyro, Kalman-fused) -> PID -> TB6612 -> two
+// IMU (MPU-6050 accel + gyro by default, Kalman-fused) -> PID -> TB6612 -> two
 // 12 V gear motors, with a tilt safety cut-off and an OLED status display.
 //
 // State machine: INIT_HW -> CALIBRATE -> BALANCE <-> FAULT_STOP
+// Fault stop, re-arm and alert rules live in safety.c.
 //*****************************************************************************
 #include <stdio.h>
 #include <stdlib.h>
@@ -35,6 +36,7 @@
 #include "motor.h"
 #include "encoder.h"
 #include "cart_email.h"
+#include "safety.h"
 #if ENABLE_OLED
 #include "spi.h"
 #include "Adafruit_GFX.h"
@@ -377,6 +379,37 @@ static void I2C_BusRecover(void)
     MAP_PinTypeI2C(I2C_SDA_PIN, I2C_PIN_MODE);
 }
 
+// Close the bus, clock a stuck slave free, then re-open it at 100 kHz.
+static void I2C_Reopen(void)
+{
+    I2C_IF_Close();
+    I2C_BusRecover();
+    I2C_IF_Open(I2C_MASTER_MODE_STD);
+}
+
+//*****************************************************************************
+// Hooks for the fault logic in safety.c (it never calls the drivers itself).
+//*****************************************************************************
+static tSafetyHal g_sSafetyHal;
+static tSafety    g_sSafety;
+
+static void SafetySetup(void)
+{
+    g_sSafetyHal.pfnMotorCoast   = Motor_Coast;
+    g_sSafetyHal.pfnMotorEnable  = Motor_Enable;
+    g_sSafetyHal.pfnResetControl = Balance_ResetPID;
+    g_sSafetyHal.pfnBusRecover   = I2C_Reopen;
+#if ENABLE_WIFI_EMAIL
+    g_sSafetyHal.pfnSendAlert    = Email_Send;
+#endif
+    g_sSafetyHal.pfnTicks        = Clock_Ticks;
+    g_sSafetyHal.pfnElapsedUs    = Clock_ElapsedUs;
+#if ENABLE_DEBUG_UART
+    g_sSafetyHal.pfnLog          = Report;
+#endif
+    Safety_Init(&g_sSafety, &g_sSafetyHal);
+}
+
 //*****************************************************************************
 //                                main
 //*****************************************************************************
@@ -386,13 +419,8 @@ void main(void)
     int        iSensorsOK = 1;
     unsigned long ulPrev;
     unsigned long ulLastOled = 0;
-    unsigned long ulUprightSince = 0;
-    int        iWasUpright = 0;
-    int        iImuFail = 0;        // consecutive IMU read failures (glitch filter)
+    int        iImuOk;              // this tick's IMU read worked
     int        iOledOk  = 0;
-#if ENABLE_WIFI_EMAIL
-    int        iFallEmailSent = 0;  // email once per fall
-#endif
 
     BoardInit();
     PinMuxConfig();
@@ -497,6 +525,7 @@ void main(void)
     Motor_Init();                                 // motors start stopped, STBY low
     Balance_Init();
     Encoder_Init();                               // no-op unless enabled
+    SafetySetup();
 
 #if ENABLE_OLED
     // Draw fixed labels + PID once now (cart held); too slow for the balance loop.
@@ -551,11 +580,7 @@ void main(void)
         case ST_CALIBRATE:
             // Cart must be held upright & still here (see OLED/console).
             if (Balance_Calibrate() < 0) { iSensorsOK = 0; eState = ST_FAULT_STOP; break; }
-            Balance_ResetPID();
-            Motor_Enable(1);                       // arm the H-bridge
-#if ENABLE_WIFI_EMAIL
-            iFallEmailSent = 0;                    // re-arm the fall alert
-#endif
+            Safety_Arm(&g_sSafety);                // reset PID, arm H-bridge + alert
             LOG("Calibrated. Balancing.\n\r");
 #if ENABLE_OLED
             if (iOledOk) OledText(0, 114, WHITE, "                  ");    // clear hint
@@ -566,32 +591,13 @@ void main(void)
 
         //-----------------------------------------------------------------
         case ST_BALANCE:
-            if (Balance_Sample(fDt) < 0) {         // IMU read glitched this tick
-                // Coast while blind (never drive on stale data); after a few fails
-                // re-open the bus; only fault if it stays dead for ~0.2 s.
-                Motor_Coast();
-                iImuFail++;
-                if (iImuFail == 5) {
-                    I2C_IF_Close();
-                    I2C_BusRecover();                   // clock a stuck slave free
-                    I2C_IF_Open(I2C_MASTER_MODE_STD);
-                    LOG("I2C re-init (noise recovery)\n\r");
-                }
-                if (iImuFail > 40) {
-                    Motor_Enable(0);
-                    LOG("IMU lost for %d ticks -> Fault stop\n\r", iImuFail);
-                    iWasUpright = 0; eState = ST_FAULT_STOP;
-                }
+            // Glitch counting and the tilt cut-off are in safety.c.
+            iImuOk = (Balance_Sample(fDt) >= 0);
+            if (Safety_BalanceTick(&g_sSafety, iImuOk, Balance_GetTilt())) {
+                eState = ST_FAULT_STOP;            // fell over, or the IMU stayed dead
                 break;
             }
-            iImuFail = 0;                          // good read -> reset glitch count
-            if (Balance_IsFallen()) {              // tipped past the safe angle
-                Motor_Coast(); Motor_Enable(0);
-                LOG("FALLEN -> Fault stop\n\r");
-                iWasUpright = 0;
-                eState = ST_FAULT_STOP;
-                break;
-            }
+            if (!iImuOk) break;                    // blind this tick: already coasting
             // Cascaded control (angle + velocity + turn). Targets 0,0 = stand
             // still / hold heading.
             {
@@ -606,51 +612,22 @@ void main(void)
 
         //-----------------------------------------------------------------
         case ST_FAULT_STOP:
-            Motor_Coast(); Motor_Enable(0);
-#if ENABLE_WIFI_EMAIL
-            // Email once per fall (blocking send ok here: cart is down, motors off).
-            if (!iFallEmailSent) {
-                Email_Send("ALERT: balance cart FELL OVER (fault stop).");
-                iFallEmailSent = 1;
-            }
-#endif
-            // Keep the filter live to auto-recover once the cart is stood back
-            // up and held near upright for ~1.5 s.
-            if (iSensorsOK && Balance_Sample(fDt) == 0)
-            {
-                float fT = Balance_GetTilt();
-                int   iUpright = (fT > -6.0f && fT < 6.0f);
-                iImuFail = 0;
-                if (iUpright && !iWasUpright) ulUprightSince = Clock_Ticks();
-                iWasUpright = iUpright;
-                if (iUpright && Clock_ElapsedUs(ulUprightSince) > 1500000UL)
-                {
-                    Balance_ResetPID();
-                    Motor_Enable(1);
-#if ENABLE_WIFI_EMAIL
-                    iFallEmailSent = 0;            // re-arm the fall alert
-#endif
-                    LOG("Recovered -> Balancing\n\r");
-                    eState = ST_BALANCE;
-                }
-            }
-            else if (((++iImuFail) % 200) == 0)   // bus still dead: unstick ~1/s
-            {
-                I2C_IF_Close();
-                I2C_BusRecover();                  // clock a stuck slave free
-                I2C_IF_Open(I2C_MASTER_MODE_STD);
-                LOG("I2C re-init + bus recover (fault)\n\r");
-            }
+            Safety_FaultHold(&g_sSafety);          // motors off, one alert per fall
+            // Keep the filter live so the cart can re-arm once it is stood
+            // back up and held near upright for ~1.5 s.
+            iImuOk = iSensorsOK && (Balance_Sample(fDt) == 0);
+            if (Safety_FaultWatch(&g_sSafety, iImuOk, Balance_GetTilt()))
+                eState = ST_BALANCE;
             break;
 
         //-----------------------------------------------------------------
         case ST_AUTOTUNE:
             if (Balance_Sample(fDt) < 0) break;          // skip glitch ticks
             if (Balance_IsFallen()) {                    // fell during the test
-                Motor_Coast(); Motor_Enable(0);
+                Safety_Trip(&g_sSafety);                 // motors off, new fault episode
                 LOG("AUTOTUNE aborted: cart fell. Check the feedback SIGN "
                     "(MOTOR_*_INVERT) and try again.\n\r");
-                iWasUpright = 0; eState = ST_FAULT_STOP;
+                eState = ST_FAULT_STOP;
                 break;
             }
             {
