@@ -5,8 +5,8 @@
 // tag eec172-final, copied as they were. Driver calls go to the same fakes the
 // safety.c tests use, and sensor results come from the test, so the original
 // code and the refactored code can be compared call by call. Lines that only
-// touch the OLED, the relay auto-tuner or the motor PWM are left out; they are
-// the same in both versions.
+// touch the OLED, the loop timer (ulPrev), the relay auto-tuner or the motor
+// PWM are left out; they are the same in both versions.
 //*****************************************************************************
 #include "ref_main_loop.h"
 #include "fake_hal.h"

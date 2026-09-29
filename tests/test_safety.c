@@ -300,6 +300,18 @@ void test_failure_count_carries_over_from_balance(void)
     TEST_ASSERT_EQUAL_INT(1, Fake_Count('B'));       // count reached 200
 }
 
+void test_trip_keeps_the_failure_count(void)
+{
+    int i;
+    FailReads(3);                                    // auto-tune starts after a few
+    Safety_Trip(&s);                                 // failures, then the cart falls
+    Fake_ClearCalls();
+    for (i = 0; i < 196; i++) Safety_FaultWatch(&s, 0, 0.0f);
+    TEST_ASSERT_EQUAL_INT(0, Fake_Count('B'));       // count is 199
+    Safety_FaultWatch(&s, 0, 0.0f);
+    TEST_ASSERT_EQUAL_INT(1, Fake_Count('B'));       // count reached 200
+}
+
 void test_good_read_in_fault_stop_restarts_the_count(void)
 {
     int i;
@@ -539,6 +551,7 @@ int main(void)
 
     RUN_TEST(test_fault_stop_reopens_the_bus_every_200_failures);
     RUN_TEST(test_failure_count_carries_over_from_balance);
+    RUN_TEST(test_trip_keeps_the_failure_count);
     RUN_TEST(test_good_read_in_fault_stop_restarts_the_count);
 
     RUN_TEST(test_random_runs_match_the_original_main_loop);
