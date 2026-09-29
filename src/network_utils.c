@@ -1,6 +1,9 @@
 /*
  * network_utils.c  (from aws-rest-api-ssl-demo)
  *
+ *  Created on: May 7, 2024
+ *      Author: rtsang
+ *
  * Wi-Fi connect + TLS + SimpleLink async event handlers.
  * Compiled only when ENABLE_WIFI_EMAIL == 1.
  */

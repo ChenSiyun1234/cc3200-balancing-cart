@@ -1,6 +1,9 @@
 /*
  * network_utils.h
  *
+ *  Created on: May 7, 2024
+ *      Author: rtsang
+ *
  * Wi-Fi connect + TLS socket helpers and SimpleLink async event handlers.
  * Used when ENABLE_WIFI_EMAIL == 1.
  */
