@@ -37,9 +37,8 @@
 #define DEBUG_VERBOSE        1
 #define MOTOR_TEST_ON_BOOT   0
 
-// Wi-Fi email alerts via AWS IoT (cart_email.c). Enabling also requires CCS
-// build changes: add the SimpleLink include paths + simplelink.a and remove
-// the NON_NETWORK symbol.
+// Wi-Fi alerts to AWS IoT (cart_email.c). The CCS project already has the
+// SimpleLink include paths and links simplelink.a.
 #define ENABLE_WIFI_EMAIL    1
 
 // Accel-only mode: run without the gyro (gyro rate treated as 0).

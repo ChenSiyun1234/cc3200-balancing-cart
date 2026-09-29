@@ -441,8 +441,8 @@ void main(void)
         int iClkDt = (int)Clock_DeltaUs(ulT0, Clock_Ticks());
         int iClkOk = (iClkDt > 100);   // nonzero => timer is running
 
-        // Recover the bus, then open at 100 kHz (STD, not 400 kHz FST): slower
-        // edges ride through motor noise better.
+        // Recover the bus, then open at 100 kHz (STD, not 400 kHz FST): the
+        // longer bit time leaves more margin against motor noise.
         int iI2COk;
         I2C_BusRecover();
         iI2COk = (I2C_IF_Open(I2C_MASTER_MODE_STD) == 0);

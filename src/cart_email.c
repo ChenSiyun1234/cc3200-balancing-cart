@@ -1,5 +1,5 @@
 //*****************************************************************************
-// cart_email.c  -  Wi-Fi email alerts (see cart_email.h)
+// cart_email.c  -  Wi-Fi alerts to AWS IoT (see cart_email.h)
 //
 // Based on aws-rest-api-ssl-demo networking (network_utils.c). Each alert is
 // an HTTPS POST to an AWS IoT Thing Shadow; any forwarding after that (IoT

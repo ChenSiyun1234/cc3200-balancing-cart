@@ -12,7 +12,7 @@ Started as my EEC 172 (Embedded Systems) final project at UC Davis, Spring 2026.
 |:---:|:---:|
 | <img src="images/cc3200_balancing.gif" width="240" alt="Cart balancing on a desk"> | <img src="images/cc3200_oled.gif" width="240" alt="OLED showing state, tilt and motor output"> |
 
-Both clips show the code at tag [`eec172-final`](https://github.com/ChenSiyun1234/cc3200-balancing-cart/tree/eec172-final).
+Both clips show the code at tag [`eec172-final`](https://github.com/ChenSiyun1234/cc3200-balancing-cart/tree/eec172-final/src).
 
 ## Hardware
 
@@ -27,7 +27,7 @@ Both clips show the code at tag [`eec172-final`](https://github.com/ChenSiyun123
 
 <img src="images/schematic_cc3200.png" width="920" alt="Connection schematic: CC3200 pins to the MPU-6050, TB6612, OLED and UART">
 
-The [pin-out card](images/pinout_cc3200.png) shows every LaunchPad pin in use, and `src/hw_config.h` has the full pin table. The board runs from the TB6612 module's 3.3 V output into P1.1, with jumper J13 removed (CC3200 LaunchPad user's guide, SWRU372, section 2.5.3). All grounds are tied together.
+The [pin-out card](images/pinout_cc3200.png) shows each CC3200 device pin in use. `src/hw_config.h` has the pin table, and the OLED pins are set in `src/pinmux.c`. The board runs from the TB6612 module's 3.3 V output into P1.1, with jumper J13 removed (CC3200 LaunchPad user's guide, SWRU372, section 2.5.3). All grounds are tied together.
 
 ## Firmware design
 
@@ -35,7 +35,7 @@ The [pin-out card](images/pinout_cc3200.png) shows every LaunchPad pin in use, a
 
 `INIT_HW → CALIBRATE → BALANCE ⇄ FAULT_STOP`
 
-- **INIT_HW** runs the power-on self-test. If the I2C bus or the MPU-6050 fails, the cart goes straight to FAULT_STOP.
+- **INIT_HW** checks the power-on self-test, which runs before the loop starts. If the I2C bus or the MPU-6050 failed, the cart goes straight to FAULT_STOP.
 - **CALIBRATE** needs the cart held upright and still. It averages 200 gyro samples for the bias and 64 accelerometer samples for the upright angle.
 - **BALANCE** runs the control loop.
 - **FAULT_STOP** keeps the motors off until the cart can re-arm (see [Safety](#safety)).
@@ -56,7 +56,7 @@ This build runs the angle loop alone. It is a PD controller on tilt and gyro rat
 
 The velocity and turn loops are in the code as well. They are off in this build, since `USE_VELOCITY_LOOP` and `USE_TURN_LOOP` are 0 in `hw_config.h`. The velocity loop needs the wheel encoders, and `ENCODER_ENABLED` is 0 too.
 
-The OLED shows the state and tilt, along with the motor output and gains. The labels are drawn once at boot, and the values refresh about once a second.
+The OLED shows the state and tilt. It also shows the motor output and the gains. The labels are drawn once at boot, and the values refresh about once a second.
 
 Gains can be tuned live over the UART console (115200 baud):
 
@@ -74,10 +74,10 @@ Gains can be tuned live over the UART console (115200 baud):
 The fault rules live in [`src/safety.c`](src/safety.c).
 
 - **Fall cut-off.** Past 35° either way, the motors coast and the cart goes to FAULT_STOP.
-- **IMU glitches.** A failed read coasts the motors for that tick instead of driving on stale data. On the 5th failure in a row the firmware re-opens the I2C bus. After more than 40 in a row (about 0.2 s), it goes to FAULT_STOP. If reads keep failing there, it re-opens the bus every 200 failed reads, about once a second.
+- **IMU glitches.** A failed read coasts the motors for that tick instead of driving on stale data. On the 5th failure in a row the firmware re-opens the I2C bus. After more than 40 in a row (about 0.2 s at 200 Hz), it goes to FAULT_STOP. If reads keep failing there, it re-opens the bus every 200 failed reads, about once a second.
 - **Re-arm.** In FAULT_STOP the filter keeps running. Stand the cart up and hold it within ±6° for 1.5 s, and it re-arms and balances again.
-- **One alert per fall.** Each fall posts at most one alert to an AWS IoT Thing Shadow, on the first FAULT_STOP tick. It is an HTTPS POST over TLS 1.2 on port 8443 with a client certificate. The send blocks, so it only runs once the motors are off. The cart also posts an "online" message at power-on.
-- **I2C bus recovery.** A sensor can hold SDA low if a reset lands mid-byte. Before opening the bus, the firmware toggles SCL as a GPIO up to 9 times until SDA is released, then sends a STOP. The bus runs at 100 kHz because slower edges ride through motor noise better.
+- **One alert per fault stop.** Each trip into FAULT_STOP posts at most one alert to an AWS IoT Thing Shadow, whether the cart fell or a sensor stopped answering. It is an HTTPS POST over TLS 1.2 on port 8443 with a client certificate. The send blocks, so it only runs once the motors are off. The cart also posts an "online" message at power-on.
+- **I2C bus recovery.** A sensor can hold SDA low if a reset lands mid-byte. Before opening the bus, the firmware toggles SCL as a GPIO up to 9 times until SDA is released, then sends a STOP. The bus runs at 100 kHz instead of 400 kHz. The longer bit time leaves more margin against motor noise.
 - **Power-on self-test.** At boot the console prints a pass or fail line for each part, with a live IMU reading. It also scans I2C addresses 0x08 to 0x77 and lists the ones that answer. The motors stay off until calibration passes.
 
 ## Build and flash
@@ -106,8 +106,8 @@ Keys and certificates stay out of git. `.gitignore` blocks `*.der`, `*.pem`, `*.
 These came after the course. The demo clips above show the code at tag `eec172-final`.
 
 - **Fault logic in its own module.** I moved the fault and alert rules out of `main()` into `src/safety.c`. `main.c` passes in the driver calls as hooks, so the same code runs on a PC.
-- **Host unit tests.** `tests/` has 25 Unity tests for the rules in `safety.c`. A replay test also runs 1,000,000 random ticks through a copy of the original `main()` code and through `safety.c`. Each hook call and console line has to match on every tick.
-- **CI.** GitHub Actions runs the host tests. It also builds my firmware modules with `arm-none-eabi-gcc` for Cortex-M4 (`-Wall -Wextra -Werror`) and runs cppcheck on them. `ci/sdk_stubs` stands in for the SDK headers, and CCS stays the flashing build.
+- **Host unit tests.** `tests/` has 27 Unity tests. 26 of them check the rules in `safety.c`. The last one runs 1,000,000 random ticks through a copy of the original `main()` state switch and through `safety.c`. Each hook call and console line has to match on every tick.
+- **CI.** GitHub Actions runs the host tests. It also compiles the project's own modules in `src/` with `arm-none-eabi-gcc` for Cortex-M4 (`-Wall -Wextra -Werror`) and runs cppcheck on them. `ci/sdk_stubs` stands in for the SDK headers, and CCS stays the flashing build.
 - **Local config.** The AWS IoT endpoint moved into the git-ignored `src/aws_config.h`.
 
 To run the same checks locally:
@@ -132,10 +132,10 @@ images/         demo clips and wiring diagrams
 ## Credits
 
 - **Texas Instruments.** `src/common/*`, `src/bma222drv.c/.h` and `cc3200v1p32.cmd` come from the CC3200 SDK and keep TI's BSD notices.
-- **aws-rest-api-ssl-demo.** `src/network_utils.c/.h` come from this CC3200 example, which is built on TI's SimpleLink SDK. `cart_email.c` builds its request the same way.
+- **EEC 172 AWS demo.** `src/network_utils.c/.h` come from the course's `aws-rest-api-ssl-demo` lab project, which builds on TI's SimpleLink examples. `cart_email.c` sends its POST and sets the clock the same way.
 - **Adafruit.** `Adafruit_GFX.c/.h`, `Adafruit_SSD1351.h`, `glcdfont.h` and the display code in `Adafruit_OLED.c` are Adafruit's SSD1351 library as ported to the CC3200 for EEC 172. The license text stays in `Adafruit_GFX.c` and `Adafruit_SSD1351.h`. My part of `Adafruit_OLED.c` is the SPI glue at the top (`writeCommand`, `writeData`).
 - **EEC 172.** `src/oled_test.h` is a course header with the color values.
-- **Kalman filter.** The math in `kalman.c` follows Kristian Lauszus's KalmanFilter library (TKJ Electronics).
+- **Kalman filter.** The math in `kalman.c` follows Kristian Lauszus's KalmanFilter library (TKJ Electronics, GPL-2.0).
 - **Unity.** `tests/unity/` is ThrowTheSwitch Unity v2.6.1 under the MIT license.
 
 This code first lived in the `CC3200/` folder of my [BalanceBot-STM32-CC3200](https://github.com/ChenSiyun1234/BalanceBot-STM32-CC3200) repo. This repo keeps that folder's commit history.

@@ -1,5 +1,5 @@
 //*****************************************************************************
-// cart_email.h - Wi-Fi email alerts via AWS IoT shadow (TLS) -> SNS.
+// cart_email.h - Wi-Fi alerts posted to an AWS IoT Thing Shadow over TLS.
 // Compiled out unless ENABLE_WIFI_EMAIL == 1 in hw_config.h. Calls are blocking.
 //*****************************************************************************
 #ifndef __CART_EMAIL_H__
