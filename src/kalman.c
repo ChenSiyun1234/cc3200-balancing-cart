@@ -1,5 +1,6 @@
 //*****************************************************************************
-// kalman.c  -  2-state IMU Kalman filter (see kalman.h)
+// kalman.c  -  2-state IMU Kalman filter (see kalman.h). Based on the KalmanFilter
+// library by Kristian Lauszus, TKJ Electronics (GPL-2.0).
 //*****************************************************************************
 #include "kalman.h"
 

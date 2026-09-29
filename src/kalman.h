@@ -2,7 +2,8 @@
 // kalman.h
 //
 // 2-state (angle + gyro-bias) Kalman filter fusing accel angle with gyro rate.
-// After K. Lauszus / TKJ Electronics.
+// Based on the KalmanFilter library by Kristian Lauszus, TKJ Electronics
+// (github.com/TKJElectronics/KalmanFilter), which is licensed under GPL-2.0.
 //*****************************************************************************
 #ifndef __KALMAN_H__
 #define __KALMAN_H__
