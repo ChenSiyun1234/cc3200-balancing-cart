@@ -31,7 +31,7 @@ static void DigOutInit(tDigOut *p, unsigned char ucGpioNum)
     MAP_GPIODirModeSet(p->uiPort, p->ucPin, GPIO_DIR_MODE_OUT);
 }
 
-static void DigOutSet(tDigOut *p, unsigned char ucVal)
+static void DigOutSet(const tDigOut *p, unsigned char ucVal)
 {
     GPIO_IF_Set(p->ucNum, p->uiPort, p->ucPin, ucVal);
 }
@@ -87,7 +87,7 @@ void Motor_Enable(unsigned char ucEnable)
 }
 
 // ucInvert flips electrical polarity for the mirror-mounted motor.
-static void DriveWheel(tDigOut *in1, tDigOut *in2,
+static void DriveWheel(const tDigOut *in1, const tDigOut *in2,
                        unsigned long ulBase, unsigned long ulTimer,
                        int iSpeed, unsigned char ucInvert)
 {

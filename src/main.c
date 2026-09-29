@@ -194,10 +194,10 @@ static float LoopPace(unsigned long *pulPrev)
     return fDt;
 }
 
+#if MOTOR_TEST_ON_BOOT
 // Blocking millisecond delay (boot / self-test only, never in the control loop).
 static void DelayMs(unsigned int uiMs) { while (uiMs--) Clock_DelayUs(1000); }
 
-#if MOTOR_TEST_ON_BOOT
 // Drive each wheel through a fixed sequence to verify the motor path (PWM, dir
 // pins, STBY, TB6612, wiring, battery) independently of the IMU. Wheels off the
 // ground before running.
@@ -447,8 +447,8 @@ void main(void)
         I2C_BusRecover();
         iI2COk = (I2C_IF_Open(I2C_MASTER_MODE_STD) == 0);
 
-        int iBmaOk = 0; signed char bmaA[3] = {0, 0, 0};
 #if ACCEL_SOURCE_IS_BMA222
+        int iBmaOk = 0; signed char bmaA[3] = {0, 0, 0};
         {
             int iTry;                              // first txn after bus-recover
             for (iTry = 0; iTry < 4 && !iBmaOk && iI2COk; iTry++)   // can glitch -> retry
@@ -529,6 +529,8 @@ void main(void)
 
 #if ENABLE_OLED
     // Draw fixed labels + PID once now (cart held); too slow for the balance loop.
+    // iOledOk is always 1 while ENABLE_OLED is on (SPI has no ACK to check).
+    // cppcheck-suppress knownConditionTrueFalse
     if (iOledOk) OledDrawStatic();
 #endif
 

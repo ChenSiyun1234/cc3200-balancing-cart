@@ -110,7 +110,6 @@ void Balance_Init(void)
 //*****************************************************************************
 int Balance_Calibrate(void)
 {
-    int i;
     const int N = 64;
     float fSum = 0.0f, fAngle, fRate;
 
@@ -121,7 +120,7 @@ int Balance_Calibrate(void)
     // 2) Accelerometer upright reference. Skip occasional I2C glitches.
     g_fAccelOffset = 0.0f;
     {
-        int iTries = 0;
+        int i, iTries = 0;
         for (i = 0; i < N && iTries < N * 16; iTries++)
         {
             if (ReadSensors(&fAngle, &fRate) == 0) { fSum += fAngle; i++; }
