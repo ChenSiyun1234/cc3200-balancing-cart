@@ -1,9 +1,10 @@
 //*****************************************************************************
 // cart_email.c  -  Wi-Fi email alerts (see cart_email.h)
 //
-// Based on aws-rest-api-ssl-demo networking (network_utils.c). AWS IoT POST to
-// a Thing Shadow triggers an IoT rule -> SNS -> email. Gated by
-// ENABLE_WIFI_EMAIL; when 0 these are no-op stubs.
+// Based on aws-rest-api-ssl-demo networking (network_utils.c). Each alert is
+// an HTTPS POST to an AWS IoT Thing Shadow; any forwarding after that (IoT
+// rule, SNS) is set up in AWS. Gated by ENABLE_WIFI_EMAIL; when 0 these are
+// no-op stubs. Endpoint and thing name come from aws_config.h (not in git).
 //*****************************************************************************
 #include "hw_config.h"
 #include "cart_email.h"
@@ -15,10 +16,9 @@
 #include "uart_if.h"
 #include "common.h"
 #include "network_utils.h"      // connectToAccessPoint(), tls_connect(), g_* globals
+#include "aws_config.h"         // AWS_IOT_ENDPOINT, THING_NAME (copy the .example)
 
-// AWS IoT target (no https:// prefix)
-#define AWS_IOT_ENDPOINT  "asohmy6nhzwqo-ats.iot.us-east-1.amazonaws.com"
-#define THING_NAME        "CC3200_Thing"
+// AWS IoT target
 #define SHADOW_PATH       "/things/" THING_NAME "/shadow"
 #define AWS_TLS_PORT      8443
 

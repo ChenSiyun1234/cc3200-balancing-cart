@@ -1,0 +1,18 @@
+//*****************************************************************************
+// aws_config.h.example
+//
+// Copy this file to aws_config.h (git-ignored) and put in your own AWS IoT
+// settings. The endpoint is under AWS IoT > Settings > Device data endpoint.
+// The device certificate and key are flashed to /cert/ on the board, not kept
+// in the source tree (see network_utils.h for the file names).
+//*****************************************************************************
+#ifndef __AWS_CONFIG_H__
+#define __AWS_CONFIG_H__
+
+// AWS IoT device data endpoint (no https:// prefix)
+#define AWS_IOT_ENDPOINT  "xxxxxxxxxxxxxx-ats.iot.us-east-1.amazonaws.com"
+
+// Thing whose shadow receives the alerts
+#define THING_NAME        "CC3200_Thing"
+
+#endif // __AWS_CONFIG_H__
