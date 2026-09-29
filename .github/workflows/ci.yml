@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install toolchains
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            gcc-arm-none-eabi libnewlib-arm-none-eabi cppcheck
+
+      - name: Show tool versions
+        run: |
+          gcc --version | head -n 1
+          arm-none-eabi-gcc --version | head -n 1
+          cppcheck --version
+
+      - name: Host unit tests
+        run: make test
+
+      - name: Compile firmware modules for Cortex-M4
+        run: make arm-check
+
+      - name: Static analysis
+        run: make cppcheck
