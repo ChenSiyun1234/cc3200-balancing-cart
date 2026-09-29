@@ -1,0 +1,27 @@
+# CCS build output
+Debug/
+Release/
+*.obj
+*.out
+*.map
+*.bin
+*_linkInfo.xml
+
+# CCS / Eclipse workspace files
+.launches/
+.metadata/
+.ptcache/
+RemoteSystemsTempFiles/
+.jxbrowser-data/
+
+# Host tests and compile checks
+build/
+
+# Local AWS IoT settings (copy src/aws_config.h.example)
+src/aws_config.h
+
+# Keys and certificates stay on the board, never in git
+*.der
+*.pem
+*.crt
+*.key
