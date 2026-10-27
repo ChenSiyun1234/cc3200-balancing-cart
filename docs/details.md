@@ -58,7 +58,7 @@ The relay auto-tune drives the motors toward the lean at a fixed level, which ma
 
 ## Fault rules
 
-These live in [`src/safety.c`](../src/safety.c).
+The first four live in [`src/safety.c`](../src/safety.c). The bus recovery and the self-test are in `src/main.c`.
 
 - Past 35 degrees either way, the motors coast and the cart goes to `FAULT_STOP`.
 - A failed IMU read coasts the motors for that tick instead of driving on stale data. On the 5th failure in a row the firmware re-opens the I2C bus. After more than 40 in a row, about 0.2 s at 200 Hz, it goes to `FAULT_STOP`. If reads keep failing there, it re-opens the bus every 200 failed reads, about once a second.
