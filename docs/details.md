@@ -92,7 +92,7 @@ Keys and certificates stay out of git. `.gitignore` blocks `*.der`, `*.pem`, `*.
 
 `tests/test_safety.c` has 27 Unity tests. 26 of them check the rules in `safety.c`. They cover the 35 degree cut-off, the bus re-open on the 5th failed read and the fault stop on the 41st. They also check that each fault stop sends one alert with no retry, and that the cart re-arms only after more than 1.5 s inside ±6 degrees.
 
-The last test runs 20 seeds of 50,000 random ticks, a million in all. Each tick goes through a copy of the original `main()` state switch at `eec172-final` (`tests/ref_main_loop.c`) and through `safety.c`. The hook calls, console lines and states have to match on every tick. The host build uses AddressSanitizer and UBSan.
+The last test runs 20 seeds of 50,000 random ticks, a million in all. Each tick goes through a copy of the original `main()` state switch at `final-project` (`tests/ref_main_loop.c`) and through `safety.c`. The hook calls, console lines and states have to match on every tick. The host build uses AddressSanitizer and UBSan.
 
 `.github/workflows/ci.yml` runs on Ubuntu 24.04 for each push and pull request:
 

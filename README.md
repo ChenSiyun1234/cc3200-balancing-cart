@@ -6,9 +6,9 @@ Bare-metal C firmware for a TI CC3200 LaunchPad that keeps a two-wheel cart stan
 |:---:|:---:|
 | <img src="images/cc3200_balancing.gif" width="240" alt="Cart balancing on a desk"> | <img src="images/cc3200_oled.gif" width="240" alt="OLED showing the state, tilt and motor output"> |
 
-Both clips show the code at the `eec172-final` tag.
+Both clips show the code at the `final-project` tag.
 
-This started as my final project for EEC 172 (Embedded Systems) at UC Davis in Spring 2026. It runs on a TARKBOT R3T chassis. The CC3200 reads tilt from an MPU-6050 over I2C and drives two gear motors through a TB6612. If the cart falls over, it cuts the motors and posts an alert to AWS IoT over Wi-Fi.
+This started as my final project for an embedded systems course in Spring 2026. It runs on a TARKBOT R3T chassis. The CC3200 reads tilt from an MPU-6050 over I2C and drives two gear motors through a TB6612. If the cart falls over, it cuts the motors and posts an alert to AWS IoT over Wi-Fi.
 
 ## What I did
 
